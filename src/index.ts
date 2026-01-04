@@ -72,15 +72,15 @@ app.post("/api/v1/content",useMiddleware,  async (req, res) => {
 app.get("/api/v1/content",useMiddleware, async (req, res) => {
     const userId = req.userId;
     // console.log(userId);
-    const content = await ContentModel.find({
-        userId : new mongoose.Types.ObjectId(userId)
-    }).populate("userId");
-    res.json({
-        content
-    })
+    
+    const contentIds = await ContentModel
+        .find({userId:new mongoose.Types.ObjectId(userId)})
+        .distinct("_id");
+        
+    res.json({contentIds});
 })
 
-app.delete("/api/v1", async (req, res) => {
+app.delete("/api/v1",useMiddleware, async (req, res) => {
     const _id = new mongoose.Types.ObjectId(req.body.contentId);
     const result = await ContentModel.deleteMany({
         _id,
