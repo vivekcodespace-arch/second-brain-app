@@ -125,8 +125,24 @@ app.post("/api/v1/brain/share",useMiddleware, async (req, res) => {
     }
 })
 
-app.get("/api/v1/brain/:shareLink", (req, res) => {
+app.get("/api/v1/brain/:shareLink", async (req, res) => {
+    //no authentication is required at this endpoint
+    const shareLink = req.params.shareLink
 
+    const user = await UserModel.findOne({share : shareLink})
+
+    if(!user){
+        return res.status(404).json({message:"Invalid or expored token."})
+    }
+
+    const content = await ContentModel.find({
+        userId : user._id
+    })
+
+    return res.json({
+        username: user.username,
+        content
+    })
 })
 
 app.listen(3000, () => {
