@@ -7,7 +7,12 @@ mongoose.connect("mongodb://localhost:27017/Brainly")
 
 const UserSchema = new Schema({
     username : {type: String, unique: true},
-    password: String
+    password: String,
+    share: {
+      type: String,
+      unique : true,
+      sparse: true
+    }
 })
 
 export const UserModel = model("Users", UserSchema);

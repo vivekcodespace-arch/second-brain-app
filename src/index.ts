@@ -5,9 +5,15 @@ import { JWT_PASS } from "./config.js";
 import { useMiddleware } from "./middleware.js";
 import mongoose from "mongoose";
 
+
+
 const app = express();
 app.use(express.json());
 
+//function for generating a link
+function generateLink(){
+    return Math.random().toString(36).substring(2,12)
+}
 
 app.post("/api/v1/signup", async (req, res) => {
     const username = req.body.usernmae;
@@ -95,8 +101,28 @@ app.delete("/api/v1",useMiddleware, async (req, res) => {
     })
 })
 
-app.post("/api/v1/brain/share", (req, res) => {
-
+app.post("/api/v1/brain/share",useMiddleware, async (req, res) => {
+    const {share} = req.body;
+    if(share){
+        const link = generateLink()
+        //same link will be stored in the db
+        await UserModel.updateOne(
+            {_id:req.userId},
+            {share: link}
+        )
+        return res.json({
+            shareLink: `/api/v1/brain/${link}`
+        })
+    }
+    else{
+        await UserModel.updateOne(
+            {_id : req.userId},
+            {$unset: {share: ""}}
+        )
+        return res.json({
+            message : "Sharing disabled."
+        })
+    }
 })
 
 app.get("/api/v1/brain/:shareLink", (req, res) => {
