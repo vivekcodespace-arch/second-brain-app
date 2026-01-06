@@ -59,7 +59,7 @@ app.post("/api/v1/content",useMiddleware,  async (req, res) => {
     }
     await ContentModel.create({
         title,
-        link,
+        link, 
         userId: new mongoose.Types.ObjectId(req.userId),
         tags: []
     })
