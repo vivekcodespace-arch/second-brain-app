@@ -1,22 +1,20 @@
 import express from "express"
 import jwt from "jsonwebtoken"
-import { ContentModel, UserModel } from "./db.js";
+import { ContentModel, LinkModel, UserModel } from "./db.js";
 import { JWT_PASS } from "./config.js";
 import { useMiddleware } from "./middleware.js";
 import mongoose from "mongoose";
-
+import cors from "cors"
 
 
 const app = express();
+
+
+app.use(cors())
 app.use(express.json());
 
-//function for generating a link
-function generateLink(){
-    return Math.random().toString(36).substring(2,12)
-}
-
 app.post("/api/v1/signup", async (req, res) => {
-    const username = req.body.usernmae;
+    const username = req.body.username;
     const password = req.body.password;
     try {
         await UserModel.create({
@@ -101,47 +99,76 @@ app.delete("/api/v1",useMiddleware, async (req, res) => {
     })
 })
 
-app.post("/api/v1/brain/share",useMiddleware, async (req, res) => {
-    const {share} = req.body;
+app.post("/api/v1/brain/share", useMiddleware,async (req, res) => {
+    const share = req.body.share;
+
     if(share){
-        const link = generateLink()
-        //same link will be stored in the db
-        await UserModel.updateOne(
-            {_id:req.userId},
-            {share: link}
-        )
-        return res.json({
-            shareLink: `/api/v1/brain/${link}`
+        const hashed_link = Math.random().toString(36).substring(2,12)
+        try{ 
+            const found = await LinkModel.findOne({
+                userId : req.userId
+            })
+            if(found){
+                await LinkModel.deleteOne({
+                    userId : req.userId
+                })
+            }
+
+            await LinkModel.create({
+                hash : hashed_link,
+                userId : req.userId
+            })
+        }catch(err){
+            return res.status(411).json({message: "Can't generate link"})
+        }
+       
+        return res.status(200).json({
+            shareLink : `Your brain sharing link is /api/v1/brain/share/${hashed_link}`
         })
-    }
-    else{
-        await UserModel.updateOne(
-            {_id : req.userId},
-            {$unset: {share: ""}}
-        )
-        return res.json({
-            message : "Sharing disabled."
-        })
+    }else{
+        try{
+          await LinkModel.deleteOne({
+            userId : req.userId
+        })    
+        }catch(err){
+            return res.status(411).json({
+                message: "Can't remove the share link"
+            })
+        }
+        
+        return res.json("Sharing link disabled")
     }
 })
 
 app.get("/api/v1/brain/:shareLink", async (req, res) => {
-    //no authentication is required at this endpoint
     const shareLink = req.params.shareLink
 
-    const user = await UserModel.findOne({share : shareLink})
-
-    if(!user){
-        return res.status(404).json({message:"Invalid or expored token."})
-    }
-
-    const content = await ContentModel.find({
-        userId : user._id
+    const linkInstance = await LinkModel.findOne({
+        hash : shareLink
     })
 
-    return res.json({
-        username: user.username,
-        content
+    if(linkInstance){
+        const user = await UserModel.findOne({
+            _id : linkInstance.userId
+        })
+        if(user){
+            const content = await ContentModel.find({
+                userId : user._id
+            })
+            return res.json({
+                user :  user.username,
+                content
+            })
+        }
+    }
+    else{
+        return res.json({message: "Link not found"})
+    }
+    res.json({
+        message: "Something went wrong."
     })
 })
 
+app.listen(3000, () => {
+    console.log(`Server is running on port:3000`);
+})
